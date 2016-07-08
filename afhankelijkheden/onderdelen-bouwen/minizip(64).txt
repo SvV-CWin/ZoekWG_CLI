@@ -1,0 +1,9 @@
+Zlib is nodig voor libzip (wat nodig is voor xlsxio) !
+Minizip is nodig voor xlsxwriter !
+
+bron: https://www.github.com/jmcnamara/libxlsxwriter/tree/master/third_party/minizip (minizip, niet nodig voor Libzip)
+bron: http://www.zlib.net
+
+* example.c, minigzip.c (van zlib) en miniunz.c, minizip.c (van minipzip) werden uitgesloten (dit zijn voorbeeldprogramma's)
+* NOCRYPT=1 NOUNCRYPT=1 werden gebruikt als preprocessorsymbolen
+* voor compilatie zonder Microsoft: iowin32.c uitsluiten

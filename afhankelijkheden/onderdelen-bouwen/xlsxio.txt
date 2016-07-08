@@ -1,0 +1,6 @@
+Xlsxio !
+
+bron: https://www.github.com/brechtsanders/xlsxio/releases -> map 'lib' en 'include'
+
+* STATIC ZIP_STATIC XML_STATIC werden gebruikt als preprocessorsymbolen
+* compatibiliteitsnamen werden gedefinieerd

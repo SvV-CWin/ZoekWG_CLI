@@ -1,0 +1,7 @@
+Expat is nodig voor xlsxio !
+
+bron: https://www.sourceforge.net/projects/expat/files (expatwin werd gebruikt) -> map 'lib'
+
+* met PellesC: het MSVC-projectbestand kan geïmporteerd worden
+* (alleen xml_parse.c, xml_role.c en xml_tok.c werden opgenomen)
+* XML_STATIC WIN32 werden gebruikt als preprocessorsymbolen
