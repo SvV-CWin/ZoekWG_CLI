@@ -9,12 +9,7 @@
 #ifndef _QFILEENCODING_H
 #define _QFILEENCODING_H
 
-#ifdef _WINDOWS_H
 char QFileEncoding(HANDLE hFile);
-//#pragma comment(lib,"QFileEncoding_W.lib")
 #include "fileprocessing\wqfileencoding.c"
-//#else /*!_WINDOWS_H*/
-//#pragma comment(lib,"QFileEncoding_CRT.lib")
-#endif  /*?_WINDOWS_H*/
 
 #endif /*_QFILEENCODING_H*/

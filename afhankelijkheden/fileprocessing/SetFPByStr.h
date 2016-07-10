@@ -10,9 +10,6 @@
 *	pStopOffset	An optional pointer to the variable that holds the offset off the current position of the file pointer of the (file) stream at which to stop the search. See further. This paramater can be NULL.
 *	pFileOffset	An optional pointer to the variable that receives the offset (in bytes) from the beginning of the search to the (starting) location of the search string on the (file) stream. This paramater can be NULL.
 *
-* CRT function	!! UNAVAILABLE !!
-*	signed char SetFPByStr(FILE *file, _TCHAR *Search, long long *StopOffset, long long *FileOffset)
-*
 * REMARKS
 * The search will begin at the current position of the file pointer of the (file) stream.
 * SetFPByStrI is the same function, except for the string comparison, which is not case sensitive.
@@ -33,22 +30,15 @@
 #define SetFPByStr SetFPByStrW
 #define SetFPByStrI SetFPByStrIW
 #else /*!UNICODE*/
-#define SetFPByStr _SetFPByStr
-#define SetFPByStrI _SetFPByStrI
+#define SetFPByStr SetFPByStrA
+#define SetFPByStrI SetFPByStrIA
 #endif /*?UNICODE*/
 
-#ifdef _WINDOWS_H
 signed char SetFPByStrW(HANDLE hfile, LPCWSTR in_search, PLARGE_INTEGER pstopoffset, PLARGE_INTEGER pfileoffset);
 signed char SetFPByStrIW(HANDLE hfile, LPCWSTR in_search, PLARGE_INTEGER pstopoffset, PLARGE_INTEGER pfileoffset);
-//signed char _SetFPByStr(HANDLE hfile, LPCSTR in_search, PLARGE_INTEGER pstopoffset, PLARGE_INTEGER pfileoffset);
-//signed char _SetFPByStrI(HANDLE hfile, LPCSTR in_search, PLARGE_INTEGER pstopoffset, PLARGE_INTEGER pfileoffset);
-//#pragma comment(lib,"SetFPByStr_W.lib")
+signed char SetFPByStrA(HANDLE hfile, LPCSTR in_search, PLARGE_INTEGER pstopoffset, PLARGE_INTEGER pfileoffset);
+signed char SetFPByStrIA(HANDLE hfile, LPCSTR in_search, PLARGE_INTEGER pstopoffset, PLARGE_INTEGER pfileoffset);
 #include "fileprocessing\qfileencoding.h"
 #include "fileprocessing\wsetfpbystr.c"
-
-//#else /*!_WINDOWS_H*/
-
-//#pragma comment(lib,"SetFPByStr_CRT.lib")
-#endif /*?_WINDOWS_H*/
 
 #endif /*_SETFPBYSTR_H*/
