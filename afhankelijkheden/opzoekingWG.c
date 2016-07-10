@@ -1,74 +1,3 @@
-/*
-* Een functie die van wittegids.be voor een gegeven adres de telefoonnummers en namen opvraagt.
-*
-* SYNTAX
-*	int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straat, LPCTSTR huisnr, ADRES **adressen, CHAR debug)
-*
-*	- hW: Een handle van een venster dat ouder moet zijn van vensterboodschappen die opzoekingWG kan tonen, mag NULL zijn.
-*	- heap_van_proces: Een handle van een heap dat gebruikt moet worden om geheugen van te alloceren.
-*	- gemeente: Een string van de gemeentenaam.
-*	- straat: Een string van de straatnaam.
-*	- huisnr: Een string van het huisnummer.
-*	- adressen: Een pointer naar een pointer van een ADRES struct
-*	- debug: 1 om meer informatie voor foutopsporing te geven, 0 om dit niet te doen
-*
-* ADRES struct
-*	typedef struct _ADRES {
-*		TCHAR gemeente[MAX_GEMEENTE];
-*		TCHAR straat[MAX_STRAAT];
-*		TCHAR huisnr[MAX_HUISNUMMER];
-*		TCHAR naam[MAX_NAAM];
-*		TCHAR telefoonnr[MAX_TELEFOON];
-*	} ADRES;
-*
-*	- element gemeente: Een string van de gemeentenaam, verkregen van wittegids.be.
-*	- element straat: Een string van de straatnaam, verkregen van wittegids.be.
-*	- element huisnr: Een string van het huisnummer, verkregen van wittegids.be.
-*	- element naam: Een string van de naam, verkregen van wittegids.be.
-*	- element telefoonnr: Een string van het telefoonnummer, verkregen van wittegids.be
-*
-* RETURNWAARDEN
-*
-*	Bij een fout, of wanneer er geen nuttige gegevens van wittegids.be werden gehaald, wordt van de pointer naar de pointer van een ADRES struct een NULL pointer gemaakt.
-*	- BUG_1: Een fout in de broncode.
-*	- NOT_DOWNLOADED: De html-pagina kon niet gedownload worden.
-*	- SERVER_UNAVAILABLE: wittegids.be gaf de boodschap: "503 Service Temporarily Unavailable".
-*	- ADDRESS_NOT_IN_WG: Het adres is niet opgenomen in wittegids.be
-*	- TELEPHONE_NOT_IN_WG: Er is van het adres geen telefoonnummer in wittegids.be
-*	- MEMORY_ERROR: Er deed zich een fout voor bij het alloceren van geheugen.
-*	- 0: Returnwaarde na "opkuis" aanvraag.
-*	In alle andere gevallen is de returnwaarde een int van het aantal unieke gevonden gegevens.
-*
-* OPMERKINGEN
-*
-*	In het geval van een probleem bij het downloaden van de webpagina krijgt de gebruiker een vensterboodschap met de opties "Opnieuw proberen" en "Annuleren" te zien.
-*	In elk geval van een geslaagde oproep van de functie (de returnwaarde is positief of de pointer naar een ADRES struct is geen NULL pointer), is het aan te raden
-*	de HeapFree-functie toe te passen op de pointer naar het ADRES struct. Dit om het door de functie gealloceerde geheugen terug vrij te geven en zo dus een geheugenlek
-*	te voorkomen.
-*	Na de laatste oproep van de functie is het aan te raden om de functie op te roepen met als string voor de gemeentenaam een lege string (""). Dit zorgt er voor dat
-*	de functie een "opkuis" houdt.
-*	Informatie voor foutopsporing wordt naar stderr geschreven.
-*
-* TYPISCH GEBRUIK
-*
-*	#include "opzoekingWG.h"
-*	ADRES *adressen;
-*	int ret = opzoekingWG(hW, GetProcessHeap(), "gemeente", "straat", "huisnr", &adressen, 0);
-*	if(ret > 0)
-*	{
-*		int i;
-*		for(i=0; i < ret; ++i)
-*			printf("%s, %s, %s: %s, %s\n", adressen[i].gemeente, adressen[i].straat, adressen[i].huisnr, adressen[i].naam, adressen[i].telefoonnr);
-*		HeapFree(GetProcessHeap(), 0, adressen);
-*	}
-*	else
-*		printf("Er konden geen gegevens worden verkregen\n");
-*	opzoekingWG(NULL, NULL, "", NULL, NULL, NULL);
-*
-* MAKER
-*	Sven Verlinden
-*/
-
 int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straat, LPCTSTR huisnr, ADRES **adressen, CHAR debug)
 {
 	/*opkuis gevraagd?*/
@@ -93,11 +22,11 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 	#if (defined UNICODE)||(defined _UNICODE)
 	if(FAILED(StringCchPrintf(url, 57+aantal+1+1, L"http://www.wittegids.be/q/name/address/where/%ls/street/%ls/nr/%ls", gemeente, straat, huisnr)))	//URL samenstellen //++ om een onbekende reden mist StringCchPrintf het overzetten van het laatste karakter (zonder fout te geven), dit in tegenstelling tot sprintf_s onder dezelfde omstandigheden
 	#else
-	if(FAILED(StringCchPrintf(url, 57+aantal+1+1, "http://www.wittegids.be/q/name/address/where/%ls/street/%ls/nr/%ls", gemeente, straat, huisnr)))
+	if(FAILED(StringCchPrintf(url, 57+aantal+1+1, "http://www.wittegids.be/q/name/address/where/%s/street/%s/nr/%s", gemeente, straat, huisnr)))
 	#endif
 	{
 		*adressen = NULL;
-		return BUG_1;
+		return ZWG_BUG_1;
 	}
 
 	HANDLE *hhtml;
@@ -129,7 +58,7 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 			*adressen = NULL;
 			if(hhtml != INVALID_HANDLE_VALUE)
 				CloseHandle(hhtml);
-			return NOT_DOWNLOADED;
+			return ZWG_NOT_DOWNLOADED;
 		}
 	} while(aantal == IDRETRY);
 	/* EINDE download html-bestand */
@@ -141,7 +70,7 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 	{
 		*adressen = NULL;
 		CloseHandle(hhtml);
-		return SERVER_UNAVAILABLE;
+		return ZWG_SERVER_UNAVAILABLE;
 	}
 	if(!SetFPByStr(hhtml, TEXT("Er werden geen resultaten gevonden voor "), NULL, NULL))	//controleer of resultaten zijn gevonden volgens de Witte Gids
 	{
@@ -149,7 +78,7 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 		CloseHandle(hhtml);
 		if(debug)
 			fprintf(stderr, "-> ZWG: wittegids.be.html geeft \'Er werden geen resultaten gevonden voor \'.\n");
-		return ADDRESS_NOT_IN_WG;
+		return ZWG_ADDRESS_NOT_IN_WG;
 	}
 	if(!SetFPByStr(hhtml, TEXT("Uw zoekopdracht voor het adres "), NULL, NULL))	//controleer of resultaten zijn gevonden volgens de Witte Gids
 	{
@@ -157,7 +86,7 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 		CloseHandle(hhtml);
 		if(debug)
 			fprintf(stderr, "-> ZWG: wittegids.be.html geeft \'Uw zoekopdracht voor het adres \'.\n");
-		return ADDRESS_NOT_IN_WG;
+		return ZWG_ADDRESS_NOT_IN_WG;
 	}
 	if(SetFPByStr(hhtml, TEXT("truvo.data['raw']="), NULL, &startdata))	//zet in startdata het begin van de data
 	{
@@ -165,7 +94,7 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 			fprintf(stderr, "-> ZWG: \'truvo.data['raw']=\' niet gevonden in wittegids.be.html.\n");
 		*adressen = NULL;
 		CloseHandle(hhtml);
-		return ADDRESS_NOT_IN_WG;
+		return ZWG_ADDRESS_NOT_IN_WG;
 	}
 	/*EINDE bestaanscontrole*/
 
@@ -176,7 +105,7 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 	if(data == NULL)
 	{
 		*adressen = NULL;
-		return MEMORY_ERROR;
+		return ZWG_MEMORY_ERROR;
 	}
 	DWORD b;
 	SetFilePointerEx(hhtml, startdata, NULL, FILE_BEGIN);
@@ -186,7 +115,7 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 	{
 		*adressen = NULL;
 		HeapFree(heap_van_proces, 0, data_begin);
-		return READ_ERROR;
+		return ZWG_READ_ERROR;
 	}
 	data[b-1] = '\0';
 	/*EINDE gegevens opnemen*/
@@ -200,7 +129,7 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 	{
 		*adressen = NULL;
 		HeapFree(heap_van_proces, 0, data_begin);
-		return TELEPHONE_NOT_IN_WG;
+		return ZWG_TELEPHONE_NOT_IN_WG;
 	}
 	}
 	/*EINDE bepaal aantal telefoonnummers*/
@@ -211,31 +140,31 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 	{
 		*adressen = NULL;
 		HeapFree(heap_van_proces, 0, data_begin);
-		return MEMORY_ERROR;
+		return ZWG_MEMORY_ERROR;
 	}
 	/*EINDE array maken*/
 
-	CHAR dummy[MAX_ALL];
+	CHAR dummy[ZWG_MAX_ALL];
 	/*GEMEENTENAAM OPNEMEN*/
 	if(StrStrA(data, "city\":\"") == NULL)
 	{
 		*adressen = NULL;
 		HeapFree(heap_van_proces, 0, data_begin);
 		HeapFree(heap_van_proces, 0, Padressen);
-		return ADDRESS_NOT_IN_WG;
+		return ZWG_ADDRESS_NOT_IN_WG;
 	}
 	{
 	CHAR *temp = StrStrA(data, "city\":\"") + sizeof("city\":\"") - 1;
-	for(i=0; dummy[i] = temp[i], (dummy[i] != '\"')&&(i < MAX_GEMEENTE-1); ++i);
+	for(i=0; dummy[i] = temp[i], (dummy[i] != '\"')&&(i < ZWG_MAX_GEMEENTE-1); ++i);
 	}
-	if(i == MAX_GEMEENTE-1)
+	if(i == ZWG_MAX_GEMEENTE-1)
 		dummy[i-1] = '_';
 	dummy[i] = '\0';
 //	UnicodeStr4CodeToUTF8Str(dummy); //getest op http://www.wittegids.be/q/name/address/where/bierbeek/street/oude%20baan/nr/157
 	#if (defined UNICODE)||(defined _UNICODE)
-	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, dummy, -1, Padressen[0].gemeente, MAX_GEMEENTE);
+	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, dummy, -1, Padressen[0].gemeente, ZWG_MAX_GEMEENTE);
 	#else
-	StringCchCopy(Padressen[aantal].gemeente, MAX_GEMEENTE, dummy);
+	StringCchCopy(Padressen[aantal].gemeente, ZWG_MAX_GEMEENTE, dummy);
 	#endif
 	
 	/*STRAATNAAM OPNEMEN*/
@@ -244,53 +173,53 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 		*adressen = NULL;
 		HeapFree(heap_van_proces, 0, data_begin);
 		HeapFree(heap_van_proces, 0, Padressen);
-		return ADDRESS_NOT_IN_WG;
+		return ZWG_ADDRESS_NOT_IN_WG;
 	}
 	{
 	CHAR *temp = StrStrA(data, "street\":\"") + sizeof("street\":\"") - 1;
-	for(i=0; dummy[i] = temp[i], ((dummy[i] < '0')||(dummy[i] > '9'))&&(dummy[i] != '\"')&&(i < MAX_STRAAT-1); ++i);
+	for(i=0; dummy[i] = temp[i], ((dummy[i] < '0')||(dummy[i] > '9'))&&(dummy[i] != '\"')&&(i < ZWG_MAX_STRAAT-1); ++i);
 	}
-	if(i == MAX_STRAAT-1)
+	if(i == ZWG_MAX_STRAAT-1)
 		dummy[i-2] = '_';
 	dummy[i-1] = '\0';
 //	UnicodeStr4CodeToUTF8Str(dummy); //getest op http://www.wittegids.be/q/name/address/where/bierbeek/street/oude%20baan/nr/157
 	#if (defined UNICODE)||(defined _UNICODE)
-	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, dummy, -1, Padressen[0].straat, MAX_STRAAT);
+	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, dummy, -1, Padressen[0].straat, ZWG_MAX_STRAAT);
 	#else
-	StringCchCopy(Padressen[aantal].straat, MAX_STRAAT, dummy);
+	StringCchCopy(Padressen[aantal].straat, ZWG_MAX_STRAAT, dummy);
 	#endif
 
 	for(aantal=0; data = StrStrA(data, "phone\":\"") + sizeof("phone\":\"") - 1, (unsigned int)data != sizeof("phone\":\"") - 1; ++aantal)
 	{
 		/*TELEFOONNUMMER OPNEMEN*/
-		for(i=0; dummy[i] = data[i], (dummy[i] != '\"')&&(i < MAX_TELEFOON-1); ++i);
+		for(i=0; dummy[i] = data[i], (dummy[i] != '\"')&&(i < ZWG_MAX_TELEFOON-1); ++i);
 		if((i == 0)&&(StrStrA(data, "mobile\":\"") != NULL))	//als er geen telefoonnummer is: mobiel telefoonnummer
 		{
 			data = StrStrA(data, "mobile\":\"") + sizeof("mobile\":\"") - 1;
-			for(i=0; dummy[i] = data[i], (dummy[i] != '\"')&&(i < MAX_TELEFOON-1); ++i);
+			for(i=0; dummy[i] = data[i], (dummy[i] != '\"')&&(i < ZWG_MAX_TELEFOON-1); ++i);
 		}
-		if((i == 0)||((i == MAX_TELEFOON-1)&&(dummy[i] != '\"')))	//geen of ongeldig telefoonnummer
+		if((i == 0)||((i == ZWG_MAX_TELEFOON-1)&&(dummy[i] != '\"')))	//geen of ongeldig telefoonnummer
 			goto NEGEREN;
 		dummy[i] = '\0';
 		#if (defined UNICODE)||(defined _UNICODE)
-		MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, dummy, -1, Padressen[aantal].telefoonnr, MAX_TELEFOON);
+		MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, dummy, -1, Padressen[aantal].telefoonnr, ZWG_MAX_TELEFOON);
 		#else
-		StringCchCopy(Padressen[aantal].telefoonnr, MAX_TELEFOON, dummy);
+		StringCchCopy(Padressen[aantal].telefoonnr, ZWG_MAX_TELEFOON, dummy);
 		#endif
 
 		/*NAAM OPNEMEN*/
 		if(StrStrA(data, "name\":\"") == NULL)
 			goto NEGEREN;
 		data = StrStrA(data, "name\":\"") + sizeof("name\":\"") - 1;
-		for(i=0; dummy[i] = data[i], (dummy[i] != '\"')&&(i < MAX_NAAM-1); ++i);
-		if((i == MAX_NAAM-1)&&(dummy[i] != '\"'))
+		for(i=0; dummy[i] = data[i], (dummy[i] != '\"')&&(i < ZWG_MAX_NAAM-1); ++i);
+		if((i == ZWG_MAX_NAAM-1)&&(dummy[i] != '\"'))
 			dummy[i-1] = '_';
 		dummy[i] = '\0';
 //		UnicodeStr4CodeToUTF8Str(dummy); //getest op http://www.wittegids.be/q/name/address/where/bierbeek/street/oude%20baan/nr/157
 		#if (defined UNICODE)||(defined _UNICODE)
-		MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, dummy, -1, Padressen[aantal].naam, MAX_NAAM);
+		MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, dummy, -1, Padressen[aantal].naam, ZWG_MAX_NAAM);
 		#else
-		StringCchCopy(Padressen[aantal].naam, MAX_NAAM, dummy);
+		StringCchCopy(Padressen[aantal].naam, ZWG_MAX_NAAM, dummy);
 		#endif
 
 		/*STRAATNAAM OVERSLAAN*/
@@ -302,12 +231,12 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 			goto NEGEREN;
 
 		/*HUISNUMMER OPNEMEN*/
-		for(i=0; dummy[i] = data[i], (dummy[i] != '\"')&&(i < MAX_HUISNUMMER-1); ++i);
+		for(i=0; dummy[i] = data[i], (dummy[i] != '\"')&&(i < ZWG_MAX_HUISNUMMER-1); ++i);
 		dummy[i] = '\0';
 		#if (defined UNICODE)||(defined _UNICODE)
-		MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, dummy, -1, Padressen[aantal].huisnr, MAX_HUISNUMMER);
+		MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, dummy, -1, Padressen[aantal].huisnr, ZWG_MAX_HUISNUMMER);
 		#else
-		StringCchCopy(Padressen[aantal].huisnr, MAX_HUISNUMMER, dummy);
+		StringCchCopy(Padressen[aantal].huisnr, ZWG_MAX_HUISNUMMER, dummy);
 		#endif
 
 		/*CONTROLE of huisnummer van het adres overeenkomt met dat in de Witte Gids*/
@@ -325,8 +254,8 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 			if((!StrCmp(Padressen[i].telefoonnr, Padressen[aantal].telefoonnr))&&(!StrCmp(Padressen[i].naam, Padressen[aantal].naam)))
 				goto NEGEREN;
 		}
-		StringCchCopy(Padressen[aantal].gemeente, MAX_GEMEENTE, Padressen[0].gemeente);
-		StringCchCopy(Padressen[aantal].straat, MAX_STRAAT, Padressen[0].straat);
+		StringCchCopy(Padressen[aantal].gemeente, ZWG_MAX_GEMEENTE, Padressen[0].gemeente);
+		StringCchCopy(Padressen[aantal].straat, ZWG_MAX_STRAAT, Padressen[0].straat);
 		goto AANNEMEN;
 
 		NEGEREN:
@@ -338,7 +267,7 @@ int opzoekingWG(HWND hW, HANDLE heap_van_proces, LPCTSTR gemeente, LPCTSTR straa
 	{
 		*adressen = NULL;
 		HeapFree(heap_van_proces, 0, Padressen);
-		return TELEPHONE_NOT_IN_WG;
+		return ZWG_TELEPHONE_NOT_IN_WG;
 	}
 	Padressen = HeapReAlloc(heap_van_proces, 0, Padressen, aantal*sizeof(ADRES));	//verkleint het nodige geheugen in geval van niet-opgenomen elementen
 	*adressen = Padressen;
