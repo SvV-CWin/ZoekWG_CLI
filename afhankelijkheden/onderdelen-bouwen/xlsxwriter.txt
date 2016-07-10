@@ -1,0 +1,12 @@
+Xlsxwriter !
+
+bron: https://www.github.com/jmcnamara/libxlsxwriter/releases -> map 'src' en 'include'
+
+* PellesC: MSVC-project kan geïmporteerd worden om een dll te bouwen. De bronnen en parameters voor het bouwen van de dll kunnen gebruikt worden om een lib te bouwen
+((* in packager.c werden deze lijnen toegevoegd:
+	#ifdef _WIN32
+	-> #undef SLIST_ENTRY///added
+	-> #define _MAX_PATH MAX_PATH///added
+	#include <windows.h> )) -> dit laat bouwen toe, maar de functie hieronder werkte niet naar behoren bij testen met het bouwen van ZoekWG_CLI
+->* in packager.c werd meermaals deze regel gewijzigd:
+	#ifdef _WIN32 -> #ifdef _WIN32x

@@ -3,6 +3,7 @@
 ZoekWG_CLI is een Windows programma dat werkt via 'command line interface', d.i. de opdrachtprompt van Windows.
 Het aanvaard als parameter een xlsx-adressenbestand, dat het zal aanvullen met overeenkomstige namen en telefoonnummers.
 
+
 Hoe te beginnen?
 
 Open het programma (op klikken). Tekst en uitleg verschijnen in een opdrachtpromptvenster.

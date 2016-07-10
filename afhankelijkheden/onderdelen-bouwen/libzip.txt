@@ -1,0 +1,10 @@
+Libzip is nodig voor xlsxio !
+
+bron: http://www.nih.at/libzip -> map 'lib'
+
+* zip_source_file.c en zip_source_filep.c werden uitgesloten van de bibliotheek (onder Windows dienen andere functies gebruikt te worden).
+* STATIC ZIP_STATIC HAVE_CONFIG_H HAVE__CLOSE HAVE__DUP HAVE__FDOPEN HAVE__FILENO HAVE__OPEN HAVE__SETMODE HAVE__STRICMP werden gebruikt als preprocessorsymbolen
+* het config.h bestand werd aangepast naar wat beschikbaar is: onderdelen werden gedefinieerd als 1 indien beschikbaar of uitbecommentarieerd als niet beschikbaar
+* |- unistd.h werd uitgesloten
+* |- #define strdup _strdup werd toegevoegd
+* in compat.h werden de definities voor SIZE_MAX, PRId64 en PRIu64 uitbecommentarieerd
