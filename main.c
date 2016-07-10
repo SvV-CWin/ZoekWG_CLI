@@ -1,4 +1,4 @@
-#define VERSION L"v1.0a"
+#define VERSION L"v1.0b"
 
 #define UNICODE
 #define _UNICODE
@@ -16,14 +16,10 @@
 #include <conio.h>		//for console functions (ex. color adaptations) [a console is typically 80 characters wide]
 #include <process.h>	//for spawnlp (opening 'licenties.txt')
 
-#define STRSAFE_NO_DEPRECATE
 #include "opzoekingwg.h"
+#include "resources.h"
 
 #pragma comment(lib,"shell32.lib")	//for ShellExecute
-#ifndef _WINDOWS_H
-#include <windows.h>
-#endif
-#undef SLIST_ENTRY		//there is a definition of SLIST_ENTRY in common.h (xlsxwriter)
 #ifndef _SHELLAPI_H
 #include <shellapi.h>	//for ShellExecute
 #endif
@@ -37,6 +33,7 @@
 #define STATIC			//needed for correct use of xlsxio.lib via xlsxio_read.h
 #include "xlsxio_read.h"
 #undef STATIC
+#undef SLIST_ENTRY		//there is a definition of SLIST_ENTRY in common.h (xlsxwriter)*/
 #include "xlsxwriter.h"
 #include "licenties.h"
 
@@ -49,8 +46,9 @@
 #define wPAD_TMP L"ZoekWG_temp.xlsx"
 
 char debug = 0;
-wchar_t *xlsx_IN;
+wchar_t *xlsx_IN, *wcwd;
 
+BOOL WINAPI SetConsoleIcon(HICON hIcon);
 int help(void);
 int do_exit(int exitcode);
 char maaksjabloon(void);
@@ -60,23 +58,31 @@ char readyxlsx(lxw_workbook **xlsxWRITE, lxw_worksheet **xlsxWRITESHEET);
 char *krijgcel(xlsxioreadersheet sheet);
 void zetcel(lxw_worksheet *sheet, char value[]);
 
+BOOL WINAPI SetConsoleIcon(HICON hIcon)
+{
+	typedef BOOL (WINAPI *PSetConsoleIcon)(HICON);
+	static PSetConsoleIcon pSetConsoleIcon = NULL;
+	if(pSetConsoleIcon == NULL)
+		pSetConsoleIcon = (PSetConsoleIcon)GetProcAddress(GetModuleHandle(L"kernel32"), "SetConsoleIcon");
+	if(pSetConsoleIcon == NULL)
+		return FALSE;
+	return pSetConsoleIcon(hIcon);
+}
+
 int wmain(int argc, wchar_t *argv[])	//returns 1 on succes
 {
+	SetConsoleIcon(LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(icoon)));
 	if((argc == 3)&&(!wcscmp(argv[2], L"debug")))
 		debug = 1;
 	_textcolor(LIGHTGREEN);
 	printf("\nZoekWG (via CLI) (%ls)\n", VERSION);
 	_textcolor(GREEN);
-	puts("maker: Sven Verlinden\nmaakt gebruik van: expat, zlib, libzip, xlsxio en xlsxwriter\n");
+	puts("maker: Sven Verlinden\nmaakt gebruik van: expat, zlib, libzip, xlsxio en xlsxwriter");
+	wcwd = _wgetcwd(NULL, 0);
 	if(debug)
 	{
 		_textcolor(DARKGRAY);
-		printf("taalindeling (voor console): %s\n", setlocale(LC_ALL, ""));
-	}
-	if(debug)
-	{
-		_textcolor(DARKGRAY);
-		printf("argv[0] = |%ls|\nargv[1] = |%ls|\ncd = |%ls|\n", argv[0], argv[1], _wgetcwd(NULL, 0));
+		printf("\ntaalindeling (voor console): %s\nargv[0] = |%ls|\nargv[1] = |%ls|\ncd = |%ls|\n", setlocale(LC_ALL, ""), argv[0], argv[1], wcwd);
 	}
 	if((argc < 2)||(argv[1][0] == L'-')||(argv[1][0] == L'/'))
 		return do_exit(help());
@@ -85,7 +91,7 @@ int wmain(int argc, wchar_t *argv[])	//returns 1 on succes
 		_textcolor(DARKGRAY);
 		puts("Geen \'-\' of \'/\' als eerste teken van argument.");
 	}
-	wchar_t _IN[wcslen(argv[1])+1];
+	wchar_t _IN[wcslen(argv[1])+1];		//kopieren van het argument om de tekenreeks 'veilig te stellen'
 	wcscpy(_IN, argv[1]);
 	xlsx_IN = _IN;
 	if(debug)
@@ -94,33 +100,12 @@ int wmain(int argc, wchar_t *argv[])	//returns 1 on succes
 		printf("De tekenreeks van het argument is gekopieerd (%ls).\n", xlsx_IN);
 	}
 	return do_exit(verwerkbestand());
-	/*switch(verwerkbestand())
-	{
-		case READ_FAILED:
-			return do_exit(READ_FAILED);
-			break;
-		case WRITE_FAILED:
-			return do_exit(WRITE_FAILED);
-			break;
-		case INCORRECT_XLSX:
-			return do_exit(INCORRECT_XLSX);
-			break;
-		case 0:
-			_wremove(xlsx_IN);
-			_wrename(wPAD_TMP, xlsx_IN);
-			return do_exit(0);
-			break;
-		default:
-			return do_exit(1);
-			break;
-	}
-	return 1;*/
 }
 
 int help(void)	//returns exit return code
 {
 	_textcolor(YELLOW);
-	puts("ZoekWG vult een Microsoft Excel 2007/2010/2013 XML (*.xlsx)-bestand aan\n\
+	puts("\nZoekWG vult een Microsoft Excel 2007/2010/2013 XML (*.xlsx)-bestand aan\n\
 met telefoonnummers, afkomstig van wittegids.be\n\
 Het (*.xlsx)-adressenbestand moet aan een bepaald sjabloon voldoen.\n\n\
 Wil je de licenties van de gebruikte onderdelen bekijken? [Y/N]");
@@ -150,7 +135,7 @@ Wil je de licenties van de gebruikte onderdelen bekijken? [Y/N]");
 			}
 			}
 			break;
-		case 0:
+		case 0:			//pijltjes, functietoetsen, ... zijn steeds twee opeenvolgende 'karakters' met een enkele toetsaanslag
 		case 224:
 			_getch();
 			break;
@@ -168,8 +153,9 @@ op het programma (ZoekWG(.exe)) en laat je het bestand los.\n");
 	if(maaksjabloon())
 		return SJAB_FAILED;
 	_textcolor(WHITE);
-	printf("Een in te vullen sjabloon werd gemaakt in\n\'%ls\', met als naam\n\
-\'%s\'.\nDit bestand nu openen? [Y/N]\n", _wgetcwd(NULL, 0), PAD_SJABLOON);
+	printf("Een in te vullen sjabloon werd gemaakt in\n\
+ \'%ls\', met als naam\n\
+ \'%s\'.\nDit bestand nu openen? [Y/N]\n", wcwd, PAD_SJABLOON);
 	switch(_getch())
 	{
 		case 'y':
@@ -179,7 +165,7 @@ op het programma (ZoekWG(.exe)) en laat je het bestand los.\n");
 			if(ret <= 32)
 			{
 				_textcolor(LIGHTRED);
-				puts("\nHet bestand kon niet geopend worden!");
+				puts("\nHet bestand met het sjabloon kon niet geopend worden!");
 				if(debug)
 				{
 					_textcolor(RED);
@@ -235,34 +221,33 @@ op het programma (ZoekWG(.exe)) en laat je het bestand los.\n");
 			_getch();
 			break;
 	}
-	putchar('\n');
 	_textcolor(WHITE);
 	return 0;
 }
 
-int do_exit(int exitcode)
+int do_exit(int exitcode)	//returns exit return code
 {
 	_textcolor(RED);
 	switch(exitcode)
 	{
 		case SJAB_FAILED:
-			puts("Er kon geen sjabloon gemaakt worden.");
+			puts("\nEr kon geen sjabloon gemaakt worden.");
 			break;
 		case READ_FAILED:
-			puts("Er is een probleem met het inlezen van het bestand.");
+			puts("\nEr is een probleem met het inlezen van het bestand.");
 			break;
 		case WRITE_FAILED:
-			puts("Er is een probleem met het aanmaken van een (*.xlsx)-bestand.");
+			puts("\nEr is een probleem met het aanmaken van een (*.xlsx)-bestand.");
 			break;
 		case INCORRECT_XLSX:
-			puts("Het ingevoerde (*.xlsx)-bestand voldoet niet aan de verwachtingen.");
+			puts("\nHet ingevoerde (*.xlsx)-bestand voldoet niet aan de verwachtingen.");
 			break;
 		case 0:
 			_textcolor(LIGHTGREEN);
-			puts("De verwerking is succesvol voltooid!");
+			puts("\nDe verwerking is succesvol voltooid!");
 			break;
 		default:
-			puts("Er is een probleem opgetreden.");
+			puts("\nEr is een probleem opgetreden.");
 			break;
 	}
 	_textcolor(WHITE);
@@ -274,7 +259,8 @@ int do_exit(int exitcode)
 			_getch();
 			break;
 	}
-	putchar('\n');
+	SetConsoleIcon(NULL);
+	free(wcwd);
 	return exitcode;
 }
 
@@ -286,7 +272,7 @@ char maaksjabloon(void)	//returns 0 on succes
 		if(debug)
 		{
 			_textcolor(LIGHTRED);
-			puts("Er is onvoldoende geheugen om een nieuw xlsx-werkboek te maken!");
+			puts("Er is onvoldoende geheugen om een nieuw xlsx-werkboek te maken (1)!");
 		}
 		return 1;
 	}
@@ -296,7 +282,7 @@ char maaksjabloon(void)	//returns 0 on succes
 		if(debug)
 		{
 			_textcolor(LIGHTRED);
-			puts("Er is onvoldoende geheugen om een nieuw xlsx-werkboek te maken!");
+			puts("Er is onvoldoende geheugen om een nieuw xlsx-werkboek te maken (2)!");
 		}
 		workbook_close(SJAB_wb);
 		remove(PAD_SJABLOON);
@@ -319,7 +305,7 @@ char maaksjabloon(void)	//returns 0 on succes
 	worksheet_write_string(SJAB_ws, 9, 0, "A. Stocletlaan", NULL);
 	worksheet_write_string(SJAB_ws, 9, 1, "10", NULL);
 	worksheet_write_string(SJAB_ws, 10, 1, "12", NULL);
-	if(workbook_close(SJAB_wb) != LXW_NO_ERROR)
+	if(workbook_close(SJAB_wb) != LXW_NO_ERROR)//++ test op bestaan in huidige werkmap
 	{
 		if(debug)
 		{
@@ -393,23 +379,24 @@ char verwerkbestand(void)	//returns 0 on succes
 	}
 
 	char *celIN;
-	wchar_t gemeente[MAX_GEMEENTE];
+	wchar_t gemeente[ZWG_MAX_GEMEENTE];
 	gemeente[0] = L'0';
+	/*Neem tot de cel met een tekenreeks met 'straat' in, de gegevens over in de nieuwe (*.xlsx)*/
 	while(celIN = krijgcel(xlsxREADSHEET), (celIN != NULL)&&(_stristr(celIN, "straat") == NULL))
 	{
-		if((gemeente[0] == L'1')&&(mbstowcs(gemeente, celIN, MAX_GEMEENTE) < 2))
+		if((gemeente[0] == L'1')&&(mbstowcs(gemeente, celIN, ZWG_MAX_GEMEENTE) < 2))	//gemeentenaam bewaren
 		{
 			if(debug)
 			{
 				_textcolor(LIGHTRED);
-				printf("Probleem bij het omvormen van\n\'%s\' naar een \'wide character\'-string.\n", celIN);
+				printf("Probleem bij het omvormen van\n \'%s\' naar een \'wide character\'-string (1).\n", celIN);
 			}
 			free(celIN);
 			goto ABORT;
 		}
 		if(_stristr(celIN, "gemeente") != NULL)
 		{
-			zetcel(xlsxWRITESHEET, "");		zetcel(xlsxWRITESHEET, "");
+			zetcel(xlsxWRITESHEET, "");		zetcel(xlsxWRITESHEET, "");		//zetcel gaat uit van vier gebruikte kolommen per rij
 			gemeente[0] = L'1';
 		}
 		zetcel(xlsxWRITESHEET, celIN);
@@ -420,43 +407,44 @@ char verwerkbestand(void)	//returns 0 on succes
 		_textcolor(DARKGRAY);
 		printf("Gemeente: \'%ls\'.\n", gemeente);
 	}
-	if((celIN == NULL)||(free(celIN), celIN = krijgcel(xlsxREADSHEET), celIN == NULL))
+	if((celIN == NULL)||(free(celIN), celIN = krijgcel(xlsxREADSHEET), celIN == NULL))	//neem de cel met 'huisnummer' op
 	{
 		if(debug)
 		{
 			_textcolor(LIGHTRED);
-			puts("Er zijn geen gegevens (meer) ingelezen voor of bij het woord \'straat\'.");
+			puts("Er zijn geen gegevens (meer) ingelezen voor of na het woord \'straat\'.");
 		}
 		goto ABORT;
 	}
 	free(celIN);
 	int i;
 	for(i = 0; i != 6; ++i)
-		zetcel(xlsxWRITESHEET, "");
+		zetcel(xlsxWRITESHEET, "");		//zetcel gaat uit van vier gebruikte kolommen per rij
 	zetcel(xlsxWRITESHEET, "Straatnaam");	zetcel(xlsxWRITESHEET, "Huisnummer");	zetcel(xlsxWRITESHEET, "Naam");	zetcel(xlsxWRITESHEET, "Telefoonnummer");
 
-	wchar_t straat[MAX_STRAAT], huisnr[MAX_HUISNUMMER];
+	wchar_t straat[ZWG_MAX_STRAAT], huisnr[ZWG_MAX_HUISNUMMER];
 	straat[0] = L'0';
 	HANDLE hheap = GetProcessHeap();
 	ADRES *adres;
-	char nieuwestraat, mbs[MAX_ALL];
+	char nieuwestraat, mbs[ZWG_MAX_ALL];
 	int ret;
-	while(celIN = krijgcel(xlsxREADSHEET), celIN != NULL)
+	while(celIN = krijgcel(xlsxREADSHEET), celIN != NULL)	//neem gegevens op tot einde van het blad
 	{
+		/*celIN bevat het gegeven uit de kolom met de straatnamen*/
 		if(celIN[0] != '\0')
 		{
 			nieuwestraat = 1;
-			if(straat[0] != L'0')
+			if(straat[0] != L'0')	//het is niet de eerste straat van de gegevens
 			{
 				for(i = 0; i != 4; ++i)
-					zetcel(xlsxWRITESHEET, "");
+					zetcel(xlsxWRITESHEET, "");		//schrijf een blanco rij
 			}
-			if(mbstowcs(straat, celIN, MAX_STRAAT) < 2)
+			if(mbstowcs(straat, celIN, ZWG_MAX_STRAAT) < 2)
 			{
 				if(debug)
 				{
 					_textcolor(LIGHTRED);
-					printf("Probleem bij het omvormen van\n\'%s\' naar een \'wide character\'-string.\n", celIN);
+					printf("Probleem bij het omvormen van\n \'%s\' naar een \'wide character\'-string (2).\n", celIN);
 				}
 				free(celIN);
 				goto ABORT;
@@ -466,45 +454,61 @@ char verwerkbestand(void)	//returns 0 on succes
 			nieuwestraat = 0;
 		free(celIN);
 		celIN = krijgcel(xlsxREADSHEET);
-		if(!mbstowcs(huisnr, celIN, MAX_HUISNUMMER))
-		{
-			if(debug)
-			{
-				_textcolor(LIGHTRED);
-				printf("Probleem bij het omvormen van\n\'%s\' naar een \'wide character\'-string.\n", celIN);
-			}
-			free(celIN);
-			goto ABORT;
-		}
-		free(celIN);
-		if(huisnr[0] == L'\0')
+		/*celIN bevat het gegeven uit de kolom met de huisnummers*/
+		if(celIN[0] == '\0')		//een rij waarbij de cel in de kolom met de huisnummers geen gegevens bevat, wordt genegeerd (dit kan zich voordoen als bij het aanmaken van het (*.xlsx)-bestand gegevens uit de laatste rij(en) verwijderd werden)
 		{
 			if(nieuwestraat)
 			{
-				if(!wcstombs(mbs, straat, MAX_ALL))
+				if(!wcstombs(mbs, straat, ZWG_MAX_ALL))
 					zetcel(xlsxWRITESHEET, "?");
 				else
 					zetcel(xlsxWRITESHEET, mbs);
 				for(i=0; i != 3; ++i)
 					zetcel(xlsxWRITESHEET, "");
 			}
+			free(celIN);
 			goto LOOPEND;
 		}
+		/*eventuele toevoegingen aan het huisnummer verwijderen*/
+		for(i=0; isdigit(celIN[i]); ++i);
+		if(!i)
+		{
+			if(debug)
+			{
+				_textcolor(LIGHTRED);
+				printf("\'%s\' werd verwacht een huisnummer te zijn,\n maar begint niet met een cijfer.\n", celIN);
+			}
+			free(celIN);
+			goto ABORT;
+		}
+		celIN[i] = '\0';
+		if(!mbstowcs(huisnr, celIN, ZWG_MAX_HUISNUMMER))
+		{
+			if(debug)
+			{
+				_textcolor(LIGHTRED);
+				printf("Probleem bij het omvormen van\n \'%s\' naar een \'wide character\'-string (3).\nEr werd een huisnummer verwacht.\n", celIN);
+			}
+			free(celIN);
+			goto ABORT;
+		}
+		free(celIN);
 		if(debug)
 			_textcolor(BROWN);
+		/*OPZOEKING obv de gegevens*/
 		ret = opzoekingWG(NULL, hheap, gemeente, straat, huisnr, &adres, debug);
-		if(ret < 1)
+		if(ret < 1)		//'voorbereidingen' voor een gefaalde opzoeking
 		{
 			if(nieuwestraat)
 			{
-				if(!wcstombs(mbs, straat, MAX_ALL))
+				if(!wcstombs(mbs, straat, ZWG_MAX_ALL))
 					zetcel(xlsxWRITESHEET, "?");
 				else
 					zetcel(xlsxWRITESHEET, mbs);
 			}
 			else
 				zetcel(xlsxWRITESHEET, "");
-			if(!wcstombs(mbs, huisnr, MAX_ALL))
+			if(!wcstombs(mbs, huisnr, ZWG_MAX_ALL))
 				zetcel(xlsxWRITESHEET, "?");
 			else
 				zetcel(xlsxWRITESHEET, mbs);
@@ -514,36 +518,40 @@ char verwerkbestand(void)	//returns 0 on succes
 		}
 		switch(ret)
 		{
-			case BUG_1:
+			case ZWG_BUG_1:
 				zetcel(xlsxWRITESHEET, "Fout in programma");
 				puts("Fout in programma");
 				break;
-			case NOT_DOWNLOADED:
+			case ZWG_NOT_DOWNLOADED:
 				zetcel(xlsxWRITESHEET, "Downloadprobleem");
 				puts("Downloadprobleem");
 				break;
-			case SERVER_UNAVAILABLE:
+			case ZWG_SERVER_UNAVAILABLE:
 				zetcel(xlsxWRITESHEET, "wittegids.be onbereikbaar");
 				puts("wittegids.be onbereikbaar");
 				break;
-			case ADDRESS_NOT_IN_WG:
+			case ZWG_ADDRESS_NOT_IN_WG:
 				zetcel(xlsxWRITESHEET, "Adres onbeschikbaar");
 				puts("Adres onbeschikbaar");
 				break;
-			case TELEPHONE_NOT_IN_WG:
+			case ZWG_TELEPHONE_NOT_IN_WG:
 				zetcel(xlsxWRITESHEET, "Telefoonnr onbeschikbaar");
 				puts("Telefoonnr onbeschikbaar");
 				break;
-			case MEMORY_ERROR:
+			case ZWG_MEMORY_ERROR:
 				zetcel(xlsxWRITESHEET, "Geheugenprobleem");
 				puts("Geheugenprobleem");
 				break;
+			case ZWG_READ_ERROR:
+				zetcel(xlsxWRITESHEET, "Inleesfout");
+				puts("Inleesfout");
+				break;
 			default:
-				for(i = 0; i != ret; ++i)
+				for(i = 0; i != ret; ++i)	//voor elk gevonden gegeven...
 				{
 					if(nieuwestraat)
 					{
-						if(!wcstombs(mbs, adres[i].straat, MAX_ALL))
+						if(!wcstombs(mbs, adres[i].straat, ZWG_MAX_ALL))
 							zetcel(xlsxWRITESHEET, "?");
 						else
 							zetcel(xlsxWRITESHEET, mbs);
@@ -551,15 +559,15 @@ char verwerkbestand(void)	//returns 0 on succes
 					}
 					else
 						zetcel(xlsxWRITESHEET, "");
-					if(!wcstombs(mbs, adres[i].huisnr, MAX_ALL))
+					if(!wcstombs(mbs, adres[i].huisnr, ZWG_MAX_ALL))
 						zetcel(xlsxWRITESHEET, "?");
 					else
 						zetcel(xlsxWRITESHEET, mbs);
-					if(!wcstombs(mbs, adres[i].naam, MAX_ALL))
+					if(!wcstombs(mbs, adres[i].naam, ZWG_MAX_ALL))
 						zetcel(xlsxWRITESHEET, "?");
 					else
 						zetcel(xlsxWRITESHEET, mbs);
-					if(!wcstombs(mbs, adres[i].telefoonnr, MAX_ALL))
+					if(!wcstombs(mbs, adres[i].telefoonnr, ZWG_MAX_ALL))
 						zetcel(xlsxWRITESHEET, "?");
 					else
 						zetcel(xlsxWRITESHEET, mbs);
@@ -572,6 +580,7 @@ char verwerkbestand(void)	//returns 0 on succes
 
 	if(debug)
 		_textcolor(BROWN);
+	/*'opkuis' aanvragen aan opzoekingWG*/
 	opzoekingWG(NULL, NULL, L"", NULL, NULL, NULL, debug);
 	workbook_close(xlsxWRITE);
 	xlsxioread_sheet_close(xlsxREADSHEET);
@@ -579,7 +588,7 @@ char verwerkbestand(void)	//returns 0 on succes
 	while(_wremove(xlsx_IN))
 	{
 		_textcolor(RED);
-		puts("Het bestaande (*.xlsx)-bestand kon niet vervangen worden.\n\
+		puts("\nHet bestaande (*.xlsx)-bestand kon niet vervangen worden.\n\
 Mogelijks is het bestand nog geopend. Opnieuw proberen? [Y/N]");
 		switch(_getch())
 		{
@@ -591,7 +600,7 @@ Mogelijks is het bestand nog geopend. Opnieuw proberen? [Y/N]");
 				_getch();
 			default:
 				_textcolor(GREEN);
-				printf("Het bestand is opgeslagen als \'%s\' in \'%ls\'.\n", PAD_TMP, _wgetcwd(NULL, 0));
+				printf("Het bestand is opgeslagen als \'%s\' in\n \'%ls\'.\n", PAD_TMP, wcwd);
 				return 0;
 				break;
 		}
@@ -603,6 +612,8 @@ ABORT:
 	xlsxioread_sheet_close(xlsxREADSHEET);
 	xlsxioread_close(xlsxREAD);
 	workbook_close(xlsxWRITE);
+	/*'opkuis' aanvragen aan opzoekingWG*/
+	opzoekingWG(NULL, NULL, L"", NULL, NULL, NULL, debug);
 	return INCORRECT_XLSX;
 }
 
@@ -677,6 +688,7 @@ char readyxlsx(lxw_workbook **xlsxWRITE, lxw_worksheet **xlsxWRITESHEET)	//retur
 
 char *krijgcel(xlsxioreadersheet sheet)
 {
+	//xlsxioread slaat automatisch lege rijen over
 	char *value = xlsxioread_sheet_next_cell(sheet);
 	if(value != NULL)
 		return value;
@@ -687,6 +699,7 @@ char *krijgcel(xlsxioreadersheet sheet)
 
 void zetcel(lxw_worksheet *sheet, char value[])
 {
+	//er wordt van uitgegaan dat de gegevens in de rijen STEEDS vier kolommen vullen
 	static lxw_row_t rij = 0;
 	static lxw_col_t kolom = 0;
 	if(kolom == 4)

@@ -1,8 +1,9 @@
 v* verwerken van 'lege' rijen, cellen met 'leeg' huisnr
 v* verwerken van geopend bestand
 v* controleren op correcte verwerking Unicodekarakters
-* toevoegen van programma-icoon
-* verwerken van huisnummers met toevoegingen
+v* toevoegen van programma-icoon
+v* verwerken van huisnummers met toevoegingen
 * scheiden van gevonden en niet-gevonden telefoonnummers in aparte bladen
-* ophalen van een hele straat
+x* ophalen van een hele straat
 * multithreading voor gelijktijdige verwerking van meerdere adressen
+* omvormen van het downloaden naar inladen in geheugen
